@@ -30,9 +30,3 @@ data class NumberOfMessages(
      */
 
 }
-
-data class ProcessingResult(
-        val processorId: String = "",
-        val count: NumberOfMessages,
-        val processed: Boolean = true
-)
