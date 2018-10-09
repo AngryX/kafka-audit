@@ -8,15 +8,15 @@ data class ApplicationData (
 
 data class KafkaClientData(
         val clientId: String = "",
-        val topicName: String,
+        val topicName: String = "",
         val producer: Boolean = false
 )
 
 data class NumberOfMessages(
-        val application: ApplicationData,
-        val kafkaClient: KafkaClientData,
+        val application: ApplicationData = ApplicationData(),
+        val kafkaClient: KafkaClientData = KafkaClientData(),
         val counterType: String = "",
-        val intervalTimestamp: Long,
+        val intervalTimestamp: Long = System.currentTimeMillis(),
         val value: Long = 0
 ){
 
