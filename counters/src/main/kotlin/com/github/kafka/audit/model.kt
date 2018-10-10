@@ -1,21 +1,14 @@
 package com.github.kafka.audit
 
-data class ApplicationData (
-        val applicationId: String = "",
-        val instanceId: String = "",
-        val locationId: String = ""
-)
-
 data class KafkaClientData(
         val clientId: String = "",
         val topicName: String = "",
+        val counterType: String = "",
         val producer: Boolean = false
 )
 
 data class NumberOfMessages(
-        val application: ApplicationData = ApplicationData(),
         val kafkaClient: KafkaClientData = KafkaClientData(),
-        val counterType: String = "",
         val intervalTimestamp: Long = System.currentTimeMillis(),
         val value: Long = 0
 ){
@@ -30,3 +23,14 @@ data class NumberOfMessages(
      */
 
 }
+
+data class ApplicationData (
+        val applicationId: String = "",
+        val instanceId: String = "",
+        val locationId: String = ""
+)
+
+data class ApplicationRecord (
+       val application: ApplicationData = ApplicationData(),
+       val number: NumberOfMessages = NumberOfMessages()
+)

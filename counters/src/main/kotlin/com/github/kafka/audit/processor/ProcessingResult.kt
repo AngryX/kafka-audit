@@ -4,6 +4,6 @@ import com.github.kafka.audit.NumberOfMessages
 
 data class ProcessingResult(
         val processorId: String = "",
-        val count: NumberOfMessages,
+        val number: NumberOfMessages,
         val processed: Boolean = true
 )
