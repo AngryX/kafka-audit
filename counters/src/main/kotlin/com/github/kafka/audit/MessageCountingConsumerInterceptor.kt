@@ -6,7 +6,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
 import org.slf4j.LoggerFactory
-import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
 class MessageCountingConsumerInterceptor<K, V>: ConsumerInterceptor<K, V> {
@@ -17,7 +16,11 @@ class MessageCountingConsumerInterceptor<K, V>: ConsumerInterceptor<K, V> {
 
     private val client = AtomicReference<String>()
 
-    private val intervalDuration = AtomicLong()
+    override fun configure(configs: Map<String, Any?>) {
+        val countingConfig = CountingConfig(configs)
+        client.set(countingConfig.getString(ConsumerConfig.GROUP_ID_CONFIG))
+        counting.configure(countingConfig)
+    }
 
     override fun onConsume(records: ConsumerRecords<K, V>): ConsumerRecords<K, V> {
         records.partitions().forEach { tp ->
@@ -25,32 +28,17 @@ class MessageCountingConsumerInterceptor<K, V>: ConsumerInterceptor<K, V> {
                     clientId = client.get() ?: "undefined",
                     topicName = tp.topic()
             )
-            val auditIntervalDuration = intervalDuration.get()
             records.records(tp).forEach { record ->
-                val count = MessageCount(
-                        clientData,
-                        record.timestamp() / auditIntervalDuration * auditIntervalDuration,
-                        1L
-                )
-                counting.add(count)
+                counting.add(clientData, record.timestamp())
             }
         }
         return records
     }
 
-    override fun onCommit(offsets: MutableMap<TopicPartition, OffsetAndMetadata>) {
-
-    }
-
-    override fun configure(configs: Map<String, Any?>) {
-        val countingConfig = CountingConfig(configs)
-        intervalDuration.set(countingConfig.getIntervalDuration())
-        client.set(countingConfig.getString(ConsumerConfig.GROUP_ID_CONFIG))
-        counting.configure(countingConfig)
-    }
+    override fun onCommit(offsets: MutableMap<TopicPartition, OffsetAndMetadata>)  = Unit
 
     override fun close() {
-        log.info("Closing of counting consumer interceptor")
+        log.info("Closing of {} counting consumer interceptor", client.get())
         counting.close()
     }
 }

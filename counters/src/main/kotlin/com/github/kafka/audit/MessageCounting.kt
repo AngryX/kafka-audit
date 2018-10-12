@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory
 import java.io.Closeable
 import java.time.Duration
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
 class MessageCounting(private val producer: Boolean = false): Closeable {
@@ -17,6 +18,8 @@ class MessageCounting(private val producer: Boolean = false): Closeable {
 
     private val clientId = AtomicReference<String>()
 
+    private val intervalDuration = AtomicLong()
+
     private val closed = AtomicBoolean(false)
 
     fun configure(configs: CountingConfig) {
@@ -27,6 +30,7 @@ class MessageCounting(private val producer: Boolean = false): Closeable {
         }
         log.info("Initialization of kafka message counting")
         clientId.set(configs.getClientId())
+        intervalDuration.set(configs.getIntervalDuration())
         val processor = CompositeMessageCountProcessorFactory().create(CompositeMessageCountProcessorSettings(clientId.get(), configs))
         manager.set(
                 CounterManager(
@@ -39,7 +43,12 @@ class MessageCounting(private val producer: Boolean = false): Closeable {
 
     }
 
-    fun add(record: MessageCount) = buffer.get()?.next(record)
+    fun add(client: KafkaClientData, timestamp: Long = System.currentTimeMillis(), value: Long = 1) {
+        val auditIntervalDuration = intervalDuration.get()
+        val intervalTime = timestamp / auditIntervalDuration * auditIntervalDuration
+        val count = MessageCount(client, intervalTime, value)
+        buffer.get()?.next(count)
+    }
 
     override fun close() {
         if(closed.compareAndSet(false, true)){
