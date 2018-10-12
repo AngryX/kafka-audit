@@ -1,16 +1,16 @@
 package com.github.kafka.audit.processor
 
-import com.github.kafka.audit.NumberOfMessages
+import com.github.kafka.audit.MessageCounter
 import org.slf4j.LoggerFactory
 import java.util.concurrent.CompletableFuture
 
-abstract class AbstractNumberProcessor(private val processorId: String): NumberProcessor {
+abstract class AbstractCounterProcessor(private val processorId: String): CounterProcessor {
 
-    private val log = LoggerFactory.getLogger(AbstractNumberProcessor::class.java)
+    private val log = LoggerFactory.getLogger(AbstractCounterProcessor::class.java)
 
     override fun processorId() = processorId
 
-    override fun handle(records: List<NumberOfMessages>): List<ProcessingResult>{
+    override fun handle(records: List<MessageCounter>): List<ProcessingResult>{
         val futures = records.map {
             val future = CompletableFuture<ProcessingResult>()
             handleWithRetry(it, Long.MAX_VALUE, future)
@@ -22,11 +22,11 @@ abstract class AbstractNumberProcessor(private val processorId: String): NumberP
                 .get()
     }
 
-    private fun handleWithRetry(record: NumberOfMessages, times: Long, future: CompletableFuture<ProcessingResult>){
+    private fun handleWithRetry(record: MessageCounter, times: Long, future: CompletableFuture<ProcessingResult>){
         handle(record)
                 .thenAccept{ future.complete(ProcessingResult(processorId(), record)) }
                 .exceptionally { ex ->
-                    log.error("Error while handling audit record {}", record, ex)
+                    log.error("Error while handling counter record {}", record, ex)
                     if (times <= 0) {
                         future.complete(ProcessingResult(processorId(), record, false))
                     } else {
@@ -36,6 +36,6 @@ abstract class AbstractNumberProcessor(private val processorId: String): NumberP
                 }
     }
 
-    abstract fun handle(record: NumberOfMessages): CompletableFuture<NumberOfMessages>
+    abstract fun handle(record: MessageCounter): CompletableFuture<MessageCounter>
 
 }

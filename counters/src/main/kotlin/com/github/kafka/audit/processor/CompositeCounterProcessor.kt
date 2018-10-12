@@ -2,10 +2,10 @@ package com.infobip.kafka.audit.processor
 
 import com.github.kafka.audit.ApplicationData
 import com.github.kafka.audit.CounterConfig
-import com.github.kafka.audit.NumberOfMessages
-import com.github.kafka.audit.processor.NumberProcessor
-import com.github.kafka.audit.processor.NumberProcessorFactory
-import com.github.kafka.audit.processor.NumberProcessorSettings
+import com.github.kafka.audit.MessageCounter
+import com.github.kafka.audit.processor.CounterProcessor
+import com.github.kafka.audit.processor.CounterProcessorFactory
+import com.github.kafka.audit.processor.CounterProcessorSettings
 import com.github.kafka.audit.processor.WrongSettingsTypeException
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.producer.ProducerConfig
@@ -26,23 +26,23 @@ const val BOOTSTRAP_SERVERS_CONFIG = "audit.bootstrap.servers"
 const val BOOTSTRAP_SERVERS_DOC = "audit.bootstrap.servers"
 
 
-class NumberProcessorConfig(original: Map<String, *>): AbstractConfig(
+class CounterProcessorConfig(original: Map<String, *>): AbstractConfig(
         ConfigDef()
                 .define(APPLICATION_ID_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.MEDIUM, APPLICATION_ID_DOC)
                 .define(APPLICATION_LOCATION_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.MEDIUM, APPLICATION_LOCATION_DOC)
                 .define(APPLICATION_INSTANCE_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.MEDIUM, APPLICATION_INSTANCE_DOC)
-                .define(TOPIC_NAME_CONFIG, ConfigDef.Type.STRING, "audit-data", ConfigDef.Importance.HIGH, TOPIC_NAME_DOC)
+                .define(TOPIC_NAME_CONFIG, ConfigDef.Type.STRING, "kafka-counters", ConfigDef.Importance.HIGH, TOPIC_NAME_DOC)
                 .define(LIST_OF_PROCESSORS_CONFIG, ConfigDef.Type.LIST, listOf("in_memory","kafka"), ConfigDef.Importance.HIGH, LIST_OF_PROCESSORS_DOC)
                 .define(BOOTSTRAP_SERVERS_CONFIG, ConfigDef.Type.LIST, emptyList<String>(), ConfigDef.Importance.MEDIUM, BOOTSTRAP_SERVERS_DOC),
         original,
         true
 )
 
-class CompositeNumberProcessorSettings(
+class CompositeCounterProcessorSettings(
         private val clientId: String,
-        private val configs: NumberProcessorConfig,
+        private val configs: CounterProcessorConfig,
         private val counterConfig: CounterConfig
-): KafkaNumberProcessorSettings {
+): KafkaCounterProcessorSettings {
 
     fun listOfProcessor(): List<String> = configs.getList(LIST_OF_PROCESSORS_CONFIG)
 
@@ -70,17 +70,17 @@ class CompositeNumberProcessorSettings(
     }
 }
 
-class CompositeNumberProcessorFactory: NumberProcessorFactory {
+class CompositeCounterProcessorFactory: CounterProcessorFactory {
 
     private val factories = listOf(
-            InMemoryNumberProcessorFactory(),
-            KafkaNumberProcessorFactory()
+            InMemoryCounterProcessorFactory(),
+            KafkaCounterProcessorFactory()
     ).associateBy { it.processorId() }
 
     override fun processorId() = "composite"
 
-    override fun create(settings: NumberProcessorSettings) = when(settings) {
-        is CompositeNumberProcessorSettings -> CompositeNumberProcessor(
+    override fun create(settings: CounterProcessorSettings) = when(settings) {
+        is CompositeCounterProcessorSettings -> CompositeCounterProcessor(
                 settings.listOfProcessor()
                         .mapNotNull { factories[it] }
                         .map { it.create(settings) }
@@ -89,11 +89,11 @@ class CompositeNumberProcessorFactory: NumberProcessorFactory {
     }
 }
 
-class CompositeNumberProcessor(private val processors: List<NumberProcessor>): NumberProcessor {
+class CompositeCounterProcessor(private val processors: List<CounterProcessor>): CounterProcessor {
 
     override fun processorId() = "composite"
 
-    override fun handle(records: List<NumberOfMessages>) = processors
+    override fun handle(records: List<MessageCounter>) = processors
             .flatMap {
                 it.handle(records)
             }
