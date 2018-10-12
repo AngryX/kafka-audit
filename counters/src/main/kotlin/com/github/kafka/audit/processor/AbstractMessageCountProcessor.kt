@@ -1,16 +1,16 @@
 package com.github.kafka.audit.processor
 
-import com.github.kafka.audit.MessageCounter
+import com.github.kafka.audit.MessageCount
 import org.slf4j.LoggerFactory
 import java.util.concurrent.CompletableFuture
 
-abstract class AbstractCounterProcessor(private val processorId: String): CounterProcessor {
+abstract class AbstractMessageCountProcessor(private val processorId: String): MessageCountProcessor {
 
-    private val log = LoggerFactory.getLogger(AbstractCounterProcessor::class.java)
+    private val log = LoggerFactory.getLogger(AbstractMessageCountProcessor::class.java)
 
     override fun processorId() = processorId
 
-    override fun handle(records: List<MessageCounter>): List<ProcessingResult>{
+    override fun handle(records: List<MessageCount>): List<ProcessingResult>{
         val futures = records.map {
             val future = CompletableFuture<ProcessingResult>()
             handleWithRetry(it, Long.MAX_VALUE, future)
@@ -22,7 +22,7 @@ abstract class AbstractCounterProcessor(private val processorId: String): Counte
                 .get()
     }
 
-    private fun handleWithRetry(record: MessageCounter, times: Long, future: CompletableFuture<ProcessingResult>){
+    private fun handleWithRetry(record: MessageCount, times: Long, future: CompletableFuture<ProcessingResult>){
         handle(record)
                 .thenAccept{ future.complete(ProcessingResult(processorId(), record)) }
                 .exceptionally { ex ->
@@ -36,6 +36,6 @@ abstract class AbstractCounterProcessor(private val processorId: String): Counte
                 }
     }
 
-    abstract fun handle(record: MessageCounter): CompletableFuture<MessageCounter>
+    abstract fun handle(record: MessageCount): CompletableFuture<MessageCount>
 
 }

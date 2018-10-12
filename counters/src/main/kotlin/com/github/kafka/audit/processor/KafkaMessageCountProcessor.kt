@@ -4,10 +4,10 @@ import com.fasterxml.jackson.databind.MapperFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.github.kafka.audit.ApplicationData
 import com.github.kafka.audit.ApplicationRecord
-import com.github.kafka.audit.MessageCounter
-import com.github.kafka.audit.processor.AbstractCounterProcessor
-import com.github.kafka.audit.processor.CounterProcessorFactory
-import com.github.kafka.audit.processor.CounterProcessorSettings
+import com.github.kafka.audit.MessageCount
+import com.github.kafka.audit.processor.AbstractMessageCountProcessor
+import com.github.kafka.audit.processor.MessageCountProcessorFactory
+import com.github.kafka.audit.processor.MessageCountProcessorSettings
 import com.github.kafka.audit.processor.WrongSettingsTypeException
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerConfig
@@ -15,18 +15,18 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.ByteArraySerializer
 import java.util.concurrent.CompletableFuture
 
-interface KafkaCounterProcessorSettings: CounterProcessorSettings {
+interface KafkaMessageCountProcessorSettings: MessageCountProcessorSettings {
     fun applicationData(): ApplicationData
     fun auditTopicName(): String
     fun producerProperties(): Map<String, Any>
 }
 
-class KafkaCounterProcessorFactory: CounterProcessorFactory {
+class KafkaMessageCountProcessorFactory: MessageCountProcessorFactory {
 
     override fun processorId() = "kafka"
 
-    override fun create(settings: CounterProcessorSettings) = when(settings) {
-        is KafkaCounterProcessorSettings -> KafkaCounterProcessor(
+    override fun create(settings: MessageCountProcessorSettings) = when(settings) {
+        is KafkaMessageCountProcessorSettings -> KafkaMessageCountProcessor(
                 processorId(),
                 settings.applicationData(),
                 settings.auditTopicName(),
@@ -37,10 +37,10 @@ class KafkaCounterProcessorFactory: CounterProcessorFactory {
 
 }
 
-class KafkaCounterProcessor(processorId: String,
-                            private val applicationData: ApplicationData,
-                            private val auditTopicName: String,
-                            producerProperties: Map<String, Any>): AbstractCounterProcessor(processorId) {
+class KafkaMessageCountProcessor(processorId: String,
+                                 private val applicationData: ApplicationData,
+                                 private val auditTopicName: String,
+                                 producerProperties: Map<String, Any>): AbstractMessageCountProcessor(processorId) {
 
     private val producer = KafkaProducer<ByteArray, ByteArray>(
             producerProperties.plus(listOf(
@@ -58,8 +58,8 @@ class KafkaCounterProcessor(processorId: String,
         configure(MapperFeature.DEFAULT_VIEW_INCLUSION, false)
     }
 
-    override fun handle(number: MessageCounter): CompletableFuture<MessageCounter> {
-        val result = CompletableFuture<MessageCounter>()
+    override fun handle(number: MessageCount): CompletableFuture<MessageCount> {
+        val result = CompletableFuture<MessageCount>()
         try {
             val kafkaRecord = ProducerRecord(
                     auditTopicName,

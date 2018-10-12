@@ -7,9 +7,9 @@ import java.util.concurrent.atomic.AtomicLong
 
 interface CounterBuffer{
 
-    fun next(number: MessageCounter)
+    fun next(number: MessageCount)
 
-    fun getValues(): List<MessageCounter>
+    fun getValues(): List<MessageCount>
 
 }
 
@@ -18,14 +18,14 @@ class SimpleCounterBuffer: CounterBuffer {
     private val buffer = CacheBuilder.newBuilder()
             .maximumSize(5000)
             .expireAfterAccess(30, TimeUnit.MINUTES)
-            .build<MessageCounterKey, AtomicLong>(
-                    object: CacheLoader<MessageCounterKey, AtomicLong>(){
-                        override fun load(key: MessageCounterKey) = AtomicLong()
+            .build<MessageCountKey, AtomicLong>(
+                    object: CacheLoader<MessageCountKey, AtomicLong>(){
+                        override fun load(key: MessageCountKey) = AtomicLong()
                     }
             )
 
 
-    override fun next(number: MessageCounter) {
+    override fun next(number: MessageCount) {
         val acc = buffer.get(number.key)
         var value = acc.get()
         while(!acc.compareAndSet(value, value + number.value)){
@@ -34,7 +34,7 @@ class SimpleCounterBuffer: CounterBuffer {
     }
 
     override fun getValues() = buffer.asMap()
-            .map { MessageCounter(it.key, it.value.getAndSet(0))}
+            .map { MessageCount(it.key, it.value.getAndSet(0))}
             .filter { it.value > 0 }
 
 

@@ -1,7 +1,7 @@
 package com.github.kafka.audit
 
 import com.github.kafka.SimpleThreadFactory
-import com.github.kafka.audit.processor.CounterProcessor
+import com.github.kafka.audit.processor.MessageCountProcessor
 import org.slf4j.LoggerFactory
 import java.io.Closeable
 import java.time.Duration
@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 class CounterManager (
         private val clientId: String,
-        private val processor: CounterProcessor,
+        private val processor: MessageCountProcessor,
         private val buffer: CounterBuffer,
         auditPeriod: Duration = Duration.ofSeconds(2)
 ): Closeable {
@@ -44,6 +44,7 @@ class CounterManager (
             log.error("Error while handling counter records", e)
             records.forEach { log.warn("Counter record {} was not processed", it) }
         }
+        processor.close()
     }
 
     private fun ExecutorService.stop(){
@@ -64,7 +65,7 @@ class CounterManager (
 
 class BufferTask(
         private val buffer: CounterBuffer,
-        private val processor: CounterProcessor,
+        private val processor: MessageCountProcessor,
         private val executor: ScheduledExecutorService,
         private val auditPeriod: Duration
 ): Runnable, Closeable {
@@ -107,7 +108,7 @@ class BufferTask(
 
 
 
-    fun repeat(data: List<MessageCounter>, attempts: Long = 1) {
+    fun repeat(data: List<MessageCount>, attempts: Long = 1) {
         if(closed.get()){
             log.warn("Attempt to repeat when task is closed")
             data.forEach {
@@ -125,9 +126,9 @@ class BufferTask(
 }
 
 class DataTask(
-        private val data: List<MessageCounter>,
+        private val data: List<MessageCount>,
         private val attempts: Long,
-        private val processor: CounterProcessor,
+        private val processor: MessageCountProcessor,
         private val bufferTask: BufferTask
 ): Runnable {
 
