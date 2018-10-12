@@ -8,7 +8,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
-class MessageCounting(private val producer: Boolean = false): Closeable {
+class MessageCounting: Closeable {
 
     private val log = LoggerFactory.getLogger(MessageCounting::class.java)
 

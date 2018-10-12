@@ -28,9 +28,8 @@ class MessageCountingConsumerInterceptor<K, V>: ConsumerInterceptor<K, V> {
                     clientId = client.get() ?: "undefined",
                     topicName = tp.topic()
             )
-            records.records(tp).forEach { record ->
-                counting.add(clientData, record.timestamp())
-            }
+            records.records(tp)
+                    .forEach { record -> counting.add(clientData, record.timestamp()) }
         }
         return records
     }
