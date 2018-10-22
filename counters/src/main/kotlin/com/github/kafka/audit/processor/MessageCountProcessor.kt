@@ -1,5 +1,6 @@
 package com.github.kafka.audit.processor
 
+import com.github.kafka.audit.CountingConfig
 import com.github.kafka.audit.MessageCount
 import java.io.Closeable
 
@@ -23,10 +24,6 @@ interface MessageCountProcessorFactory {
 
     fun processorId(): String
 
-    fun create(settings: MessageCountProcessorSettings): MessageCountProcessor
+    fun create(configs: CountingConfig): MessageCountProcessor
 
 }
-
-interface MessageCountProcessorSettings
-
-class WrongSettingsTypeException: IllegalArgumentException("Wrong type of processor settings")

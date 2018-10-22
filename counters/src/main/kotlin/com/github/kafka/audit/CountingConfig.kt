@@ -1,6 +1,7 @@
 package com.github.kafka.audit
 
 import org.apache.kafka.clients.CommonClientConfigs
+import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.config.AbstractConfig
 import org.apache.kafka.common.config.ConfigDef
 import java.time.Duration
@@ -20,7 +21,24 @@ const val LIST_OF_PROCESSORS_DOC = "audit.processors"
 const val BOOTSTRAP_SERVERS_CONFIG = "audit.bootstrap.servers"
 const val BOOTSTRAP_SERVERS_DOC = "audit.bootstrap.servers"
 
-class CountingConfig(original: Map<String, *>): AbstractConfig(
+interface CountingConfig{
+
+    fun getApplicationId(): String
+
+    fun getClientId(): String
+
+    fun getIntervalDuration(): Long
+
+    fun getApplicationData(): ApplicationData
+
+    fun listOfProcessor(): List<String>
+
+    fun getStringValue(name: String): String
+
+    fun getListValue(name: String): List<String>
+}
+
+class CountingConfigImpl(val producer: Boolean, original: Map<String, *>): CountingConfig, AbstractConfig(
         ConfigDef()
             .define(CommonClientConfigs.CLIENT_ID_CONFIG, ConfigDef.Type.STRING, "defaultClientId", ConfigDef.Importance.MEDIUM, CommonClientConfigs.CLIENT_ID_DOC)
             .define(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, ConfigDef.Type.LIST, ConfigDef.Importance.HIGH, CommonClientConfigs.BOOTSTRAP_SERVERS_DOC)
@@ -35,8 +53,34 @@ class CountingConfig(original: Map<String, *>): AbstractConfig(
         true
 ) {
 
-    fun getClientId() = getString(CommonClientConfigs.CLIENT_ID_CONFIG)
+    private val application: ApplicationData by lazy {
+        ApplicationData(
+                applicationId = getApplicationId(),
+                instanceId = getStringValue(APPLICATION_INSTANCE_CONFIG),
+                locationId = getStringValue(APPLICATION_LOCATION_CONFIG)
+        )
+    }
 
-    fun getIntervalDuration() = Duration.parse(getString(AUDIT_INTERVAL_DURATION_DOC)).toMillis()
+    private val duration: Long by lazy {
+        Duration.parse(getString(AUDIT_INTERVAL_DURATION_DOC)).toMillis()
+    }
+
+    override fun getApplicationData() = application
+
+    override fun getStringValue(name: String) = getString(name)
+
+    override fun getListValue(name: String) = getList(name)
+
+    override fun getApplicationId() = if(producer) {
+        getString(APPLICATION_ID_CONFIG)
+    } else {
+        getString(ConsumerConfig.GROUP_ID_CONFIG)
+    }
+
+    override fun getClientId() = getString(CommonClientConfigs.CLIENT_ID_CONFIG)
+
+    override fun getIntervalDuration() = duration
+
+    override fun listOfProcessor(): List<String> = getListValue(LIST_OF_PROCESSORS_CONFIG)
 
 }

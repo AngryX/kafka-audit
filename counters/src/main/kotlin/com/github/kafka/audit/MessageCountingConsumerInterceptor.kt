@@ -17,8 +17,8 @@ class MessageCountingConsumerInterceptor<K, V>: ConsumerInterceptor<K, V> {
     private val client = AtomicReference<String>()
 
     override fun configure(configs: Map<String, Any?>) {
-        val countingConfig = CountingConfig(configs)
-        client.set(countingConfig.getString(ConsumerConfig.GROUP_ID_CONFIG))
+        val countingConfig = CountingConfigImpl(false, configs)
+        client.set(countingConfig.getApplicationId())
         counting.configure(countingConfig)
     }
 

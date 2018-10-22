@@ -5,7 +5,6 @@ import org.slf4j.LoggerFactory
 import java.io.Closeable
 import java.time.Duration
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
 class MessageCounting: Closeable {
@@ -16,9 +15,7 @@ class MessageCounting: Closeable {
 
     private val buffer = AtomicReference<CounterBuffer>()
 
-    private val clientId = AtomicReference<String>()
-
-    private val intervalDuration = AtomicLong()
+    private val configs = AtomicReference<CountingConfig>()
 
     private val closed = AtomicBoolean(false)
 
@@ -28,13 +25,12 @@ class MessageCounting: Closeable {
             log.warn("Kafka message counting has been already initialized")
             return
         }
-        log.info("Initialization of kafka message counting")
-        clientId.set(configs.getClientId())
-        intervalDuration.set(configs.getIntervalDuration())
-        val processor = CompositeMessageCountProcessorFactory().create(CompositeMessageCountProcessorSettings(clientId.get(), configs))
+        log.info("Initialization of {} kafka message counting", configs.getClientId())
+        this.configs.set(configs)
+        val processor = CompositeMessageCountProcessorFactory().create(configs)
         manager.set(
                 CounterManager(
-                    clientId.get(),
+                    configs.getClientId(),
                     processor,
                     buffer,
                     Duration.ofSeconds(2) //todo: as parameter
@@ -44,7 +40,7 @@ class MessageCounting: Closeable {
     }
 
     fun add(client: KafkaClientData, timestamp: Long = System.currentTimeMillis(), value: Long = 1) {
-        val auditIntervalDuration = intervalDuration.get()
+        val auditIntervalDuration = configs.get().getIntervalDuration()
         val intervalTime = timestamp / auditIntervalDuration * auditIntervalDuration
         val count = MessageCount(client, intervalTime, value)
         buffer.get()?.next(count)
@@ -52,7 +48,7 @@ class MessageCounting: Closeable {
 
     override fun close() {
         if(closed.compareAndSet(false, true)){
-            log.info("Closing of {} kafka message counting", clientId.get())
+            log.info("Closing of {} kafka message counting", configs.get().getClientId())
             manager.getAndSet(null)?.close()
         }
     }

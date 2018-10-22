@@ -16,8 +16,8 @@ class MessageCountingProducerInterceptor<K,V>: ProducerInterceptor<K,V> {
     private val client = AtomicReference<String>()
 
     override fun configure(configs: Map<String, Any?>) {
-        val countingConfig = CountingConfig(configs)
-        client.set(countingConfig.getString(APPLICATION_ID_CONFIG))
+        val countingConfig = CountingConfigImpl(true, configs)
+        client.set(countingConfig.getApplicationId())
         counting.configure(countingConfig)
     }
 

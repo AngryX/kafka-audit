@@ -2,37 +2,50 @@ package com.infobip.kafka.audit.processor
 
 import com.fasterxml.jackson.databind.MapperFeature
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.github.kafka.audit.ApplicationData
-import com.github.kafka.audit.ApplicationRecord
-import com.github.kafka.audit.MessageCount
+import com.github.kafka.audit.*
 import com.github.kafka.audit.processor.AbstractMessageCountProcessor
 import com.github.kafka.audit.processor.MessageCountProcessorFactory
-import com.github.kafka.audit.processor.MessageCountProcessorSettings
-import com.github.kafka.audit.processor.WrongSettingsTypeException
+import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.ByteArraySerializer
 import java.util.concurrent.CompletableFuture
 
-interface KafkaMessageCountProcessorSettings: MessageCountProcessorSettings {
-    fun applicationData(): ApplicationData
-    fun auditTopicName(): String
-    fun producerProperties(): Map<String, Any>
-}
-
 class KafkaMessageCountProcessorFactory: MessageCountProcessorFactory {
 
     override fun processorId() = "kafka"
 
-    override fun create(settings: MessageCountProcessorSettings) = when(settings) {
-        is KafkaMessageCountProcessorSettings -> KafkaMessageCountProcessor(
+    override fun create(configs: CountingConfig) = KafkaMessageCountProcessor(
                 processorId(),
-                settings.applicationData(),
-                settings.auditTopicName(),
-                settings.producerProperties()
+                configs.getApplicationData(),
+                configs.auditTopicName(),
+                configs.producerProperties()
         )
-        else -> throw WrongSettingsTypeException()
+
+    private fun CountingConfig.auditTopicName() = getStringValue(TOPIC_NAME_CONFIG)
+
+    private fun CountingConfig.producerProperties() = mapOf(
+            ProducerConfig.BOOTSTRAP_SERVERS_CONFIG to getBootstrapServers(),
+            ProducerConfig.CLIENT_ID_CONFIG to "audit_${getClientId()}",
+            ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG to true,
+            ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION to 1,
+            ProducerConfig.RETRIES_CONFIG to Integer.MAX_VALUE,
+            ProducerConfig.ACKS_CONFIG to "all",
+            ProducerConfig.LINGER_MS_CONFIG to 5,
+            ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG to ByteArraySerializer::class.java,
+            ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG to ByteArraySerializer::class.java
+
+
+    )
+
+    private fun CountingConfig.getBootstrapServers(): List<String>{
+        val value = getListValue(BOOTSTRAP_SERVERS_CONFIG)
+        return if(value.isEmpty()){
+            getListValue(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG)
+        } else {
+            value
+        }
     }
 
 }
@@ -42,33 +55,23 @@ class KafkaMessageCountProcessor(processorId: String,
                                  private val auditTopicName: String,
                                  producerProperties: Map<String, Any>): AbstractMessageCountProcessor(processorId) {
 
-    private val producer = KafkaProducer<ByteArray, ByteArray>(
-            producerProperties.plus(listOf(
-                    ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG to true,
-                    ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION to 1,
-                    ProducerConfig.RETRIES_CONFIG to Integer.MAX_VALUE,
-                    ProducerConfig.ACKS_CONFIG to "all",
-                    ProducerConfig.LINGER_MS_CONFIG to 5,
-                    ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG to ByteArraySerializer::class.java,
-                    ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG to ByteArraySerializer::class.java
-            ))
-    )
+    private val producer = KafkaProducer<ByteArray, ByteArray>(producerProperties)
 
     private val objectMapper = ObjectMapper().apply{
         configure(MapperFeature.DEFAULT_VIEW_INCLUSION, false)
     }
 
-    override fun handle(number: MessageCount): CompletableFuture<MessageCount> {
+    override fun handle(count: MessageCount): CompletableFuture<MessageCount> {
         val result = CompletableFuture<MessageCount>()
         try {
             val kafkaRecord = ProducerRecord(
                     auditTopicName,
-                    objectMapper.writeValueAsBytes(number.kafkaClient),
-                    objectMapper.writeValueAsBytes(ApplicationRecord(applicationData,number))
+                    objectMapper.writeValueAsBytes(count.kafkaClient),
+                    objectMapper.writeValueAsBytes(ApplicationRecord(applicationData, count))
             )
             producer.send(kafkaRecord){ _, ex ->
                 when(ex){
-                    null -> result.complete(number)
+                    null -> result.complete(count)
                     else -> result.completeExceptionally(ex)
                 }
             }
