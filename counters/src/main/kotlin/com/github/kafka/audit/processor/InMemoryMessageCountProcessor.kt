@@ -1,10 +1,10 @@
 package com.infobip.kafka.audit.processor
 
+import com.github.kafka.audit.CountingConfigs
 import com.github.kafka.audit.MessageCount
 import com.github.kafka.audit.MessageCountKey
 import com.github.kafka.audit.processor.AbstractMessageCountProcessor
 import com.github.kafka.audit.processor.MessageCountProcessorFactory
-import com.github.kafka.audit.processor.MessageCountProcessorSettings
 import com.google.common.cache.CacheBuilder
 import com.google.common.cache.CacheLoader
 import org.slf4j.LoggerFactory
@@ -16,7 +16,7 @@ class InMemoryMessageCountProcessorFactory: MessageCountProcessorFactory {
 
     override fun processorId() = "in_memory"
 
-    override fun create(settings: MessageCountProcessorSettings) = InMemoryMessageCountProcessor(
+    override fun create(configs: CountingConfigs) = InMemoryMessageCountProcessor(
             processorId()
     )
 

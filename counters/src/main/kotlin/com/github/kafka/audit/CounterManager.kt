@@ -1,22 +1,18 @@
 package com.github.kafka.audit
 
-import com.github.kafka.SimpleThreadFactory
 import com.github.kafka.audit.processor.MessageCountProcessor
 import org.slf4j.LoggerFactory
-import java.io.Closeable
 import java.time.Duration
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
-import java.util.concurrent.ScheduledExecutorService
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.*
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 
 class CounterManager (
         private val clientId: String,
         private val processor: MessageCountProcessor,
         private val buffer: CounterBuffer,
         auditPeriod: Duration = Duration.ofSeconds(2)
-): Closeable {
+): AutoCloseable {
 
     private val log = LoggerFactory.getLogger(CounterManager::class.java)
 
@@ -26,7 +22,7 @@ class CounterManager (
 
     private val task = BufferTask(buffer, processor, executor, auditPeriod)
 
-    init {
+    fun start() {
         task.schedule()
     }
 
@@ -68,7 +64,7 @@ class BufferTask(
         private val processor: MessageCountProcessor,
         private val executor: ScheduledExecutorService,
         private val auditPeriod: Duration
-): Runnable, Closeable {
+): Runnable, AutoCloseable {
 
     private val log = LoggerFactory.getLogger(BufferTask::class.java)
     private val closed = AtomicBoolean(false);
@@ -147,6 +143,24 @@ class DataTask(
             bufferTask.repeat(data, attempts + 1)
         }
 
+    }
+
+}
+
+class SimpleThreadFactory(private val threadName: String): ThreadFactory {
+
+    private val log = LoggerFactory.getLogger(SimpleThreadFactory::class.java)
+
+    private val counter = AtomicLong(1)
+
+    private val uncaughtExceptionHandler = Thread.UncaughtExceptionHandler{ thread, throwable ->
+        log.error("Uncaught error ${throwable.message} in ${thread.name} ")
+    }
+
+    override fun newThread(r: Runnable): Thread {
+        val thread = Thread(r, "$threadName-${counter.andIncrement}")
+        thread.setUncaughtExceptionHandler(uncaughtExceptionHandler)
+        return thread
     }
 
 }
