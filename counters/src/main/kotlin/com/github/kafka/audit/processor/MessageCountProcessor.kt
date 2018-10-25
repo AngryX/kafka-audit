@@ -2,9 +2,8 @@ package com.github.kafka.audit.processor
 
 import com.github.kafka.audit.CountingConfig
 import com.github.kafka.audit.MessageCount
-import java.io.Closeable
 
-interface MessageCountProcessor: Closeable {
+interface MessageCountProcessor: AutoCloseable {
 
     fun processorId(): String
 

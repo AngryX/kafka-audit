@@ -3,7 +3,6 @@ package com.github.kafka.audit
 import com.github.kafka.SimpleThreadFactory
 import com.github.kafka.audit.processor.MessageCountProcessor
 import org.slf4j.LoggerFactory
-import java.io.Closeable
 import java.time.Duration
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -16,7 +15,7 @@ class CounterManager (
         private val processor: MessageCountProcessor,
         private val buffer: CounterBuffer,
         auditPeriod: Duration = Duration.ofSeconds(2)
-): Closeable {
+): AutoCloseable {
 
     private val log = LoggerFactory.getLogger(CounterManager::class.java)
 
@@ -68,7 +67,7 @@ class BufferTask(
         private val processor: MessageCountProcessor,
         private val executor: ScheduledExecutorService,
         private val auditPeriod: Duration
-): Runnable, Closeable {
+): Runnable, AutoCloseable {
 
     private val log = LoggerFactory.getLogger(BufferTask::class.java)
     private val closed = AtomicBoolean(false);

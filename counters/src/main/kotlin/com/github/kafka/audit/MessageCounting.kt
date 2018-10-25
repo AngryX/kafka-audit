@@ -2,11 +2,10 @@ package com.github.kafka.audit
 
 import com.infobip.kafka.audit.processor.*
 import org.slf4j.LoggerFactory
-import java.io.Closeable
 import java.time.Duration
 import java.util.concurrent.atomic.AtomicReference
 
-class MessageCounting: Closeable {
+class MessageCounting: AutoCloseable {
 
     private val log = LoggerFactory.getLogger(MessageCounting::class.java)
 
@@ -34,7 +33,7 @@ class MessageCounting: Closeable {
         counting.getAndSet(null)?.close()
     }
 
-    private class Counting(val configs: CountingConfig): Closeable {
+    private class Counting(val configs: CountingConfig): AutoCloseable {
 
         private val log = LoggerFactory.getLogger(Counting::class.java)
 
