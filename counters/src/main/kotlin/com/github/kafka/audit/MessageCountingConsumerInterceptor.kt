@@ -5,7 +5,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
 import org.slf4j.LoggerFactory
-import java.util.concurrent.atomic.AtomicReference
 
 class MessageCountingConsumerInterceptor<K, V>: ConsumerInterceptor<K, V> {
 
@@ -13,13 +12,9 @@ class MessageCountingConsumerInterceptor<K, V>: ConsumerInterceptor<K, V> {
 
     private val counting = MessageCounting()
 
-    private val client = AtomicReference<String>()
-
     override fun configure(configs: Map<String, Any?>) {
-        val countingConfigs = CountingConfigs(false, configs)
-        client.set(countingConfigs.getApplicationId())
         try {
-            counting.configure(countingConfigs)
+            counting.configure(CountingConfigs(false, configs))
         } catch(e: MessageCountingException){
             log.error("Error while configuring of counting", e)
         }
@@ -28,13 +23,9 @@ class MessageCountingConsumerInterceptor<K, V>: ConsumerInterceptor<K, V> {
 
     override fun onConsume(records: ConsumerRecords<K, V>): ConsumerRecords<K, V> {
         records.partitions().forEach { tp ->
-            val clientData = KafkaClientData(
-                    clientId = client.get() ?: "undefined",
-                    topicName = tp.topic()
-            )
             records.records(tp).forEach { record ->
                 try {
-                    counting.add(clientData, record.timestamp())
+                    counting.add(tp.topic(), record.timestamp())
                 } catch(e: MessageCountingException){
                     log.error("Error while adding new value", e)
                 }
@@ -46,7 +37,7 @@ class MessageCountingConsumerInterceptor<K, V>: ConsumerInterceptor<K, V> {
     override fun onCommit(offsets: MutableMap<TopicPartition, OffsetAndMetadata>)  = Unit
 
     override fun close() {
-        log.info("Closing of {} counting consumer interceptor", client.get())
+        log.info("Closing of counting consumer interceptor")
         counting.close()
     }
 }

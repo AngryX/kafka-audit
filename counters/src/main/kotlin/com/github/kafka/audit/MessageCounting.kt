@@ -21,12 +21,16 @@ class MessageCounting: AutoCloseable {
         }
     }
 
-    fun add(client: KafkaClientData, timestamp: Long = System.currentTimeMillis(), value: Long = 1) {
+    fun add(topic: String,
+            timestamp: Long = System.currentTimeMillis(),
+            value: Long = 1,
+            counterType: String = ""
+    ) {
         val counting = this.counting.get()
         if(counting == null){
             throw MessageCountingException("MessageCounting component has to be configured before using")
         }
-        counting.add(client, timestamp, value)
+        counting.add(topic, timestamp, value, counterType)
     }
 
     override fun close() {
@@ -52,11 +56,16 @@ class MessageCounting: AutoCloseable {
             manager.start()
         }
 
-        fun add(client: KafkaClientData, timestamp: Long, value: Long){
+        fun add(topic: String, timestamp: Long, value: Long, counterType: String){
             val auditIntervalDuration = configs.getIntervalDuration()
             val intervalTime = timestamp / auditIntervalDuration * auditIntervalDuration
-            val count = MessageCount(client, intervalTime, value)
-            buffer.next(count)
+            val client = KafkaClientData(
+                    clientId = configs.getApplicationId(),
+                    topicName = topic,
+                    counterType = counterType,
+                    producer = configs.producer
+            )
+            buffer.next(MessageCount(client, intervalTime, value))
         }
 
         override fun close() {

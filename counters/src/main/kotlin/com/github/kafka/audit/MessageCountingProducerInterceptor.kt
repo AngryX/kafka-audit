@@ -5,7 +5,6 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.clients.producer.RecordMetadata
 import org.slf4j.LoggerFactory
 import java.lang.Exception
-import java.util.concurrent.atomic.AtomicReference
 
 class MessageCountingProducerInterceptor<K,V>: ProducerInterceptor<K,V> {
 
@@ -13,13 +12,9 @@ class MessageCountingProducerInterceptor<K,V>: ProducerInterceptor<K,V> {
 
     private val counting = MessageCounting()
 
-    private val client = AtomicReference<String>()
-
     override fun configure(configs: Map<String, Any?>) {
-        val countingConfigs = CountingConfigs(true, configs)
-        client.set(countingConfigs.getApplicationId())
         try {
-            counting.configure(countingConfigs)
+            counting.configure(CountingConfigs(true, configs))
         } catch(e: MessageCountingException){
             log.error("Error while configuring of counting", e)
         }
@@ -32,20 +27,15 @@ class MessageCountingProducerInterceptor<K,V>: ProducerInterceptor<K,V> {
         if(exception != null || metadata == null){
             return
         }
-        val clientData = KafkaClientData(
-                clientId = client.get() ?: "undefined",
-                topicName = metadata.topic(),
-                producer = true
-        )
         try {
-            counting.add(clientData, metadata.timestamp())
+            counting.add(metadata.topic(), metadata.timestamp())
         } catch(e: MessageCountingException){
             log.error("Error while adding new values", e)
         }
     }
 
     override fun close() {
-        log.info("Closing of {} counting producer interceptor", client.get())
+        log.info("Closing of counting producer interceptor")
         counting.close()
     }
 

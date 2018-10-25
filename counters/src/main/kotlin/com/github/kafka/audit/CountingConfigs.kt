@@ -21,7 +21,7 @@ const val BOOTSTRAP_SERVERS_CONFIG = "audit.bootstrap.servers"
 const val BOOTSTRAP_SERVERS_DOC = "audit.bootstrap.servers"
 
 class CountingConfigs(
-        private val producer: Boolean,
+        val producer: Boolean,
         private val original: Map<String, *>
 ){
 /*    : CountingConfigs, AbstractConfig(
