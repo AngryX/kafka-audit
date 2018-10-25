@@ -26,7 +26,7 @@ class CounterManager (
 
     private val task = BufferTask(buffer, processor, executor, auditPeriod)
 
-    init {
+    fun start() {
         task.schedule()
     }
 

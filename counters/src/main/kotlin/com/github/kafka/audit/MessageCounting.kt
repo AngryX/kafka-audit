@@ -4,53 +4,66 @@ import com.infobip.kafka.audit.processor.*
 import org.slf4j.LoggerFactory
 import java.io.Closeable
 import java.time.Duration
-import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
 class MessageCounting: Closeable {
 
     private val log = LoggerFactory.getLogger(MessageCounting::class.java)
 
-    private val manager = AtomicReference<CounterManager>()
-
-    private val buffer = AtomicReference<CounterBuffer>()
-
-    private val configs = AtomicReference<CountingConfig>()
-
-    private val closed = AtomicBoolean(false)
+    private val counting = AtomicReference<Counting>()
 
     fun configure(configs: CountingConfig) {
-        val buffer = SimpleCounterBuffer()
-        if(!this.buffer.compareAndSet(null, buffer)){
+        val counting = Counting(configs)
+        if(!this.counting.compareAndSet(null, counting)){
             log.warn("Kafka message counting has been already initialized")
-            return
+        } else {
+            log.info("Initialization of {} kafka message counting", configs.getClientId())
+            counting.start()
         }
-        log.info("Initialization of {} kafka message counting", configs.getClientId())
-        this.configs.set(configs)
-        val processor = CompositeMessageCountProcessorFactory().create(configs)
-        manager.set(
-                CounterManager(
-                    configs.getClientId(),
-                    processor,
-                    buffer,
-                    Duration.ofSeconds(2) //todo: as parameter
-                )
-        )
-
     }
 
     fun add(client: KafkaClientData, timestamp: Long = System.currentTimeMillis(), value: Long = 1) {
-        val auditIntervalDuration = configs.get().getIntervalDuration()
-        val intervalTime = timestamp / auditIntervalDuration * auditIntervalDuration
-        val count = MessageCount(client, intervalTime, value)
-        buffer.get()?.next(count)
+        val counting = this.counting.get()
+        if(counting == null){
+            throw MessageCountingException("MessageCounting component has to be configured before using")
+        }
+        counting.add(client, timestamp, value)
     }
 
     override fun close() {
-        if(closed.compareAndSet(false, true)){
-            log.info("Closing of {} kafka message counting", configs.get().getClientId())
-            manager.getAndSet(null)?.close()
-        }
+        counting.getAndSet(null)?.close()
     }
 
+    private class Counting(val configs: CountingConfig): Closeable {
+
+        private val log = LoggerFactory.getLogger(Counting::class.java)
+
+        private val buffer = SimpleCounterBuffer()
+
+        private val manager by lazy {
+            CounterManager(
+                    configs.getClientId(),
+                    CompositeMessageCountProcessorFactory().create(configs),
+                    buffer,
+                    Duration.ofSeconds(2) //todo: as parameter
+            )
+        }
+
+        fun start(){
+            manager.start()
+        }
+
+        fun add(client: KafkaClientData, timestamp: Long, value: Long){
+            val auditIntervalDuration = configs.getIntervalDuration()
+            val intervalTime = timestamp / auditIntervalDuration * auditIntervalDuration
+            val count = MessageCount(client, intervalTime, value)
+            buffer.next(count)
+        }
+
+        override fun close() {
+            log.info("Closing of {} kafka message counting", configs.getClientId())
+            manager.close()
+        }
+
+    }
 }

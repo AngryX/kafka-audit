@@ -18,7 +18,12 @@ class MessageCountingProducerInterceptor<K,V>: ProducerInterceptor<K,V> {
     override fun configure(configs: Map<String, Any?>) {
         val countingConfig = CountingConfigImpl(true, configs)
         client.set(countingConfig.getApplicationId())
-        counting.configure(countingConfig)
+        try {
+            counting.configure(countingConfig)
+        } catch(e: MessageCountingException){
+            log.error("Error while configuring of counting", e)
+        }
+
     }
 
     override fun onSend(record: ProducerRecord<K, V>) = record
@@ -27,14 +32,16 @@ class MessageCountingProducerInterceptor<K,V>: ProducerInterceptor<K,V> {
         if(exception != null || metadata == null){
             return
         }
-        counting.add(
-                KafkaClientData(
-                        clientId = client.get() ?: "undefined",
-                        topicName = metadata.topic(),
-                        producer = true
-                ),
-                metadata.timestamp()
+        val clientData = KafkaClientData(
+                clientId = client.get() ?: "undefined",
+                topicName = metadata.topic(),
+                producer = true
         )
+        try {
+            counting.add(clientData, metadata.timestamp())
+        } catch(e: MessageCountingException){
+            log.error("Error while adding new values", e)
+        }
     }
 
     override fun close() {

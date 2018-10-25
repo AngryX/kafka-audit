@@ -1,6 +1,5 @@
 package com.github.kafka.audit
 
-import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.ConsumerInterceptor
 import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
@@ -19,7 +18,12 @@ class MessageCountingConsumerInterceptor<K, V>: ConsumerInterceptor<K, V> {
     override fun configure(configs: Map<String, Any?>) {
         val countingConfig = CountingConfigImpl(false, configs)
         client.set(countingConfig.getApplicationId())
-        counting.configure(countingConfig)
+        try {
+            counting.configure(countingConfig)
+        } catch(e: MessageCountingException){
+            log.error("Error while configuring of counting", e)
+        }
+
     }
 
     override fun onConsume(records: ConsumerRecords<K, V>): ConsumerRecords<K, V> {
@@ -28,8 +32,13 @@ class MessageCountingConsumerInterceptor<K, V>: ConsumerInterceptor<K, V> {
                     clientId = client.get() ?: "undefined",
                     topicName = tp.topic()
             )
-            records.records(tp)
-                    .forEach { record -> counting.add(clientData, record.timestamp()) }
+            records.records(tp).forEach { record ->
+                try {
+                    counting.add(clientData, record.timestamp())
+                } catch(e: MessageCountingException){
+                    log.error("Error while adding new value", e)
+                }
+            }
         }
         return records
     }
