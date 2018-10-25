@@ -12,6 +12,9 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.ByteArraySerializer
 import java.util.concurrent.CompletableFuture
 
+const val TOPIC_NAME_CONFIG = "audit.processor.kafka.topic"
+const val BOOTSTRAP_SERVERS_CONFIG = "audit.processor.kafka.bootstrap.servers"
+
 class KafkaMessageCountProcessorFactory: MessageCountProcessorFactory {
 
     override fun processorId() = "kafka"
