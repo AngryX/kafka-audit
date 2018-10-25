@@ -13,7 +13,7 @@ class CompositeMessageCountProcessorFactory: MessageCountProcessorFactory {
 
     override fun processorId() = "composite"
 
-    override fun create(configs: CountingConfig) = CompositeMessageCountProcessor(
+    override fun create(configs: CountingConfigs) = CompositeMessageCountProcessor(
             configs.listOfProcessor()
                     .mapNotNull { factories[it] }
                     .map { it.create(configs) }

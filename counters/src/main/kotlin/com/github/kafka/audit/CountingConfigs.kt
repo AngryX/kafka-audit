@@ -2,8 +2,7 @@ package com.github.kafka.audit
 
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.consumer.ConsumerConfig
-import org.apache.kafka.common.config.AbstractConfig
-import org.apache.kafka.common.config.ConfigDef
+import org.slf4j.LoggerFactory
 import java.time.Duration
 
 const val AUDIT_INTERVAL_DURATION_CONFIG = "audit.interval.duration"
@@ -21,24 +20,11 @@ const val LIST_OF_PROCESSORS_DOC = "audit.processors"
 const val BOOTSTRAP_SERVERS_CONFIG = "audit.bootstrap.servers"
 const val BOOTSTRAP_SERVERS_DOC = "audit.bootstrap.servers"
 
-interface CountingConfig{
-
-    fun getApplicationId(): String
-
-    fun getClientId(): String
-
-    fun getIntervalDuration(): Long
-
-    fun getApplicationData(): ApplicationData
-
-    fun listOfProcessor(): List<String>
-
-    fun getStringValue(name: String): String
-
-    fun getListValue(name: String): List<String>
-}
-
-class CountingConfigImpl(val producer: Boolean, original: Map<String, *>): CountingConfig, AbstractConfig(
+class CountingConfigs(
+        private val producer: Boolean,
+        private val original: Map<String, *>
+){
+/*    : CountingConfigs, AbstractConfig(
         ConfigDef()
             .define(CommonClientConfigs.CLIENT_ID_CONFIG, ConfigDef.Type.STRING, "defaultClientId", ConfigDef.Importance.MEDIUM, CommonClientConfigs.CLIENT_ID_DOC)
             .define(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, ConfigDef.Type.LIST, ConfigDef.Importance.HIGH, CommonClientConfigs.BOOTSTRAP_SERVERS_DOC)
@@ -51,7 +37,9 @@ class CountingConfigImpl(val producer: Boolean, original: Map<String, *>): Count
             .define(BOOTSTRAP_SERVERS_CONFIG, ConfigDef.Type.LIST, emptyList<String>(), ConfigDef.Importance.MEDIUM, BOOTSTRAP_SERVERS_DOC),
         original,
         true
-) {
+) {*/
+
+    private val log = LoggerFactory.getLogger(CountingConfigs::class.java)
 
     private val application: ApplicationData by lazy {
         ApplicationData(
@@ -62,25 +50,54 @@ class CountingConfigImpl(val producer: Boolean, original: Map<String, *>): Count
     }
 
     private val duration: Long by lazy {
-        Duration.parse(getString(AUDIT_INTERVAL_DURATION_DOC)).toMillis()
+        Duration.parse(getStringValue(AUDIT_INTERVAL_DURATION_DOC, "PT15M")).toMillis()
     }
 
-    override fun getApplicationData() = application
+    fun getApplicationData() = application
 
-    override fun getStringValue(name: String) = getString(name)
-
-    override fun getListValue(name: String) = getList(name)
-
-    override fun getApplicationId() = if(producer) {
-        getString(APPLICATION_ID_CONFIG)
+    fun getApplicationId() = if(producer) {
+        getStringValue(APPLICATION_ID_CONFIG)
     } else {
-        getString(ConsumerConfig.GROUP_ID_CONFIG)
+        getStringValue(ConsumerConfig.GROUP_ID_CONFIG)
     }
 
-    override fun getClientId() = getString(CommonClientConfigs.CLIENT_ID_CONFIG)
+    fun getClientId() = getStringValue(CommonClientConfigs.CLIENT_ID_CONFIG)
 
-    override fun getIntervalDuration() = duration
+    fun getIntervalDuration() = duration
 
-    override fun listOfProcessor(): List<String> = getListValue(LIST_OF_PROCESSORS_CONFIG)
+    fun listOfProcessor(): List<String> = getListValue(LIST_OF_PROCESSORS_CONFIG, listOf("kafka"))
 
+    fun getStringValue(name: String, defaultValue: String = "") = getValue(name, defaultValue)
+
+    fun getStringValue(name: String, defaultValue: () -> String) = getValue(name, defaultValue)
+
+    fun getListValue(name: String, defaultValue: List<String> = emptyList()) = getValue(name, defaultValue) { data ->
+        when (data) {
+            null -> null
+            is String -> data.split(",").map { it.trim() }
+            else -> {
+                log.warn("Not expected type {} for property {} which should be transformed to list of strings", data.javaClass, name)
+                null
+            }
+        }
+    }
+
+    private fun <T> getValue(
+            name: String,
+            defaultValue: T,
+            transform: (Any?) -> T? = { it as T? }
+    ) = original.getAndTransform(name,transform)
+            .run{ this ?: defaultValue }
+
+    private fun <T> getValue(
+            name: String,
+            defaultValue: () -> T,
+            transform: (Any?) -> T? = { it as T? }
+    ) = original.getAndTransform(name,transform)
+            .run{ this ?: defaultValue() }
+
+    private fun <T> Map<String, *>.getAndTransform(
+            name: String,
+            transform: (Any?) -> T?
+    ) = original[name].run(transform)
 }

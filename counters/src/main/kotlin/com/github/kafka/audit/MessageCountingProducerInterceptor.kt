@@ -16,10 +16,10 @@ class MessageCountingProducerInterceptor<K,V>: ProducerInterceptor<K,V> {
     private val client = AtomicReference<String>()
 
     override fun configure(configs: Map<String, Any?>) {
-        val countingConfig = CountingConfigImpl(true, configs)
-        client.set(countingConfig.getApplicationId())
+        val countingConfigs = CountingConfigs(true, configs)
+        client.set(countingConfigs.getApplicationId())
         try {
-            counting.configure(countingConfig)
+            counting.configure(countingConfigs)
         } catch(e: MessageCountingException){
             log.error("Error while configuring of counting", e)
         }

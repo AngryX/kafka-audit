@@ -11,7 +11,7 @@ class MessageCounting: AutoCloseable {
 
     private val counting = AtomicReference<Counting>()
 
-    fun configure(configs: CountingConfig) {
+    fun configure(configs: CountingConfigs) {
         val counting = Counting(configs)
         if(!this.counting.compareAndSet(null, counting)){
             log.warn("Kafka message counting has been already initialized")
@@ -33,7 +33,7 @@ class MessageCounting: AutoCloseable {
         counting.getAndSet(null)?.close()
     }
 
-    private class Counting(val configs: CountingConfig): AutoCloseable {
+    private class Counting(val configs: CountingConfigs): AutoCloseable {
 
         private val log = LoggerFactory.getLogger(Counting::class.java)
 

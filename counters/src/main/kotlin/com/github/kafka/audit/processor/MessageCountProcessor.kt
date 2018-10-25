@@ -1,6 +1,6 @@
 package com.github.kafka.audit.processor
 
-import com.github.kafka.audit.CountingConfig
+import com.github.kafka.audit.CountingConfigs
 import com.github.kafka.audit.MessageCount
 
 interface MessageCountProcessor: AutoCloseable {
@@ -23,6 +23,6 @@ interface MessageCountProcessorFactory {
 
     fun processorId(): String
 
-    fun create(configs: CountingConfig): MessageCountProcessor
+    fun create(configs: CountingConfigs): MessageCountProcessor
 
 }

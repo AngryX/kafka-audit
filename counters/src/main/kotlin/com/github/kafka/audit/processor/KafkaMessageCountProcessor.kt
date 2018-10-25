@@ -16,16 +16,16 @@ class KafkaMessageCountProcessorFactory: MessageCountProcessorFactory {
 
     override fun processorId() = "kafka"
 
-    override fun create(configs: CountingConfig) = KafkaMessageCountProcessor(
+    override fun create(configs: CountingConfigs) = KafkaMessageCountProcessor(
                 processorId(),
                 configs.getApplicationData(),
                 configs.auditTopicName(),
                 configs.producerProperties()
         )
 
-    private fun CountingConfig.auditTopicName() = getStringValue(TOPIC_NAME_CONFIG)
+    private fun CountingConfigs.auditTopicName() = getStringValue(TOPIC_NAME_CONFIG)
 
-    private fun CountingConfig.producerProperties() = mapOf(
+    private fun CountingConfigs.producerProperties() = mapOf(
             ProducerConfig.BOOTSTRAP_SERVERS_CONFIG to getBootstrapServers(),
             ProducerConfig.CLIENT_ID_CONFIG to "audit_${getClientId()}",
             ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG to true,
@@ -39,7 +39,7 @@ class KafkaMessageCountProcessorFactory: MessageCountProcessorFactory {
 
     )
 
-    private fun CountingConfig.getBootstrapServers(): List<String>{
+    private fun CountingConfigs.getBootstrapServers(): List<String>{
         val value = getListValue(BOOTSTRAP_SERVERS_CONFIG)
         return if(value.isEmpty()){
             getListValue(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG)

@@ -16,10 +16,10 @@ class MessageCountingConsumerInterceptor<K, V>: ConsumerInterceptor<K, V> {
     private val client = AtomicReference<String>()
 
     override fun configure(configs: Map<String, Any?>) {
-        val countingConfig = CountingConfigImpl(false, configs)
-        client.set(countingConfig.getApplicationId())
+        val countingConfigs = CountingConfigs(false, configs)
+        client.set(countingConfigs.getApplicationId())
         try {
-            counting.configure(countingConfig)
+            counting.configure(countingConfigs)
         } catch(e: MessageCountingException){
             log.error("Error while configuring of counting", e)
         }
