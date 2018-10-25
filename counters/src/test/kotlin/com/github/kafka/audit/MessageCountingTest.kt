@@ -16,7 +16,7 @@ class MessageCountingTest {
     @Test
     fun `Should throw an MessageCountingException if adding happens before configuration`(){
         try{
-            counting.add(KafkaClientData())
+            counting.add(topic = "test")
             assertTrue(false, "MessageCountException should be thrown because counting has not been configured yet")
         } catch(e: MessageCountingException){
         } catch(e: Throwable){
