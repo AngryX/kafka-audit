@@ -16,7 +16,7 @@ class MessageCountingTest {
     @Test
     fun `Should throw an MessageCountingException if adding happens before configuration`(){
         try{
-            counting.add(topic = "test")
+            counting.add(topic = "test", timestamp = 0L)
             assertTrue(false, "MessageCountException should be thrown because counting has not been configured yet")
         } catch(e: MessageCountingException){
         } catch(e: Throwable){

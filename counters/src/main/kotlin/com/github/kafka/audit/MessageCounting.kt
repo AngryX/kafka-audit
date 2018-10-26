@@ -22,7 +22,7 @@ class MessageCounting: AutoCloseable {
     }
 
     fun add(topic: String,
-            timestamp: Long = System.currentTimeMillis(),
+            timestamp: Long,
             value: Long = 1,
             counterType: String = ""
     ) {
