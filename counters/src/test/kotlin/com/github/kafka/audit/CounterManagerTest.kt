@@ -24,6 +24,7 @@ class CounterManagerTest {
                 buffer,
                 Duration.ofMillis(10)
         )
+        manager.start()
     }
 
     @After

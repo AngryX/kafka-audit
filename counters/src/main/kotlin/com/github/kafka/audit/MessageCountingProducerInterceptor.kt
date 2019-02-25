@@ -14,7 +14,7 @@ class MessageCountingProducerInterceptor<K,V>: ProducerInterceptor<K,V> {
 
     override fun configure(configs: Map<String, Any?>) {
         try {
-            counting.configure(CountingConfigs(true, configs))
+            counting.configure(MessageCountingConfigs(true, configs))
         } catch(e: MessageCountingException){
             log.error("Error while configuring of counting", e)
         }

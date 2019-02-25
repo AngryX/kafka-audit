@@ -5,7 +5,7 @@ import com.google.common.cache.CacheLoader
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 
-interface CounterBuffer{
+interface CounterBuffer {
 
     fun next(number: MessageCount)
 
@@ -13,11 +13,14 @@ interface CounterBuffer{
 
 }
 
-class SimpleCounterBuffer: CounterBuffer {
+class SimpleCounterBuffer(
+        maxSize: Long = 5000,
+        expirationTimeInMinutes: Long = 30
+): CounterBuffer {
 
     private val buffer = CacheBuilder.newBuilder()
-            .maximumSize(5000)
-            .expireAfterAccess(30, TimeUnit.MINUTES)
+            .maximumSize(maxSize)
+            .expireAfterAccess(expirationTimeInMinutes, TimeUnit.MINUTES)
             .build<MessageCountKey, AtomicLong>(
                     object: CacheLoader<MessageCountKey, AtomicLong>(){
                         override fun load(key: MessageCountKey) = AtomicLong()
@@ -25,10 +28,10 @@ class SimpleCounterBuffer: CounterBuffer {
             )
 
 
-    override fun next(number: MessageCount) {
-        val acc = buffer.get(number.key)
+    override fun next(count: MessageCount) {
+        val acc = buffer.get(count.key)
         var value = acc.get()
-        while(!acc.compareAndSet(value, value + number.value)){
+        while(!acc.compareAndSet(value, value + count.value)){
             value = acc.get()
         }
     }

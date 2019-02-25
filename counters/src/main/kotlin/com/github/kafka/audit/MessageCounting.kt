@@ -3,21 +3,22 @@ package com.github.kafka.audit
 import com.infobip.kafka.audit.processor.*
 import org.slf4j.LoggerFactory
 import java.time.Duration
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
 
 class MessageCounting: AutoCloseable {
 
     private val log = LoggerFactory.getLogger(MessageCounting::class.java)
 
-    private val counting = AtomicReference<Counting>()
+    private val handler = AtomicReference<Handler>()
 
-    fun configure(configs: CountingConfigs) {
-        val counting = Counting(configs)
-        if(!this.counting.compareAndSet(null, counting)){
+    fun configure(configs: MessageCountingConfigs) {
+        val handler = Handler(configs)
+        if(!this.handler.compareAndSet(null, handler)){
             log.warn("Kafka message counting has been already initialized")
         } else {
             log.info("Initialization of {} kafka message counting", configs.getClientId())
-            counting.start()
+            handler.start()
         }
     }
 
@@ -26,20 +27,18 @@ class MessageCounting: AutoCloseable {
             value: Long = 1,
             counterType: String = ""
     ) {
-        val counting = this.counting.get()
-        if(counting == null){
-            throw MessageCountingException("MessageCounting component has to be configured before using")
-        }
-        counting.add(topic, timestamp, value, counterType)
+        val handler = this.handler.get()
+        handler?.add(topic, timestamp, value, counterType)
+                ?: throw MessageCountingException("MessageCounting component has to be configured before using")
     }
 
     override fun close() {
-        counting.getAndSet(null)?.close()
+        handler.getAndSet(null)?.close()
     }
 
-    private class Counting(val configs: CountingConfigs): AutoCloseable {
+    private class Handler(val configs: MessageCountingConfigs): AutoCloseable {
 
-        private val log = LoggerFactory.getLogger(Counting::class.java)
+        private val log = LoggerFactory.getLogger(Handler::class.java)
 
         private val buffer = SimpleCounterBuffer()
 

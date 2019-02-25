@@ -14,7 +14,7 @@ class MessageCountingConsumerInterceptor<K, V>: ConsumerInterceptor<K, V> {
 
     override fun configure(configs: Map<String, Any?>) {
         try {
-            counting.configure(CountingConfigs(false, configs))
+            counting.configure(MessageCountingConfigs(false, configs))
         } catch(e: MessageCountingException){
             log.error("Error while configuring of counting", e)
         }

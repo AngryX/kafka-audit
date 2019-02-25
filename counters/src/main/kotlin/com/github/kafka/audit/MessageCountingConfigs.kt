@@ -11,12 +11,12 @@ const val APPLICATION_LOCATION_CONFIG = "audit.application.location"
 const val AUDIT_INTERVAL_DURATION_CONFIG = "audit.interval.duration"
 const val LIST_OF_PROCESSORS_CONFIG = "audit.processors"
 
-class CountingConfigs(
+class MessageCountingConfigs(
         val producer: Boolean,
         private val original: Map<String, *>
 ){
 
-    private val log = LoggerFactory.getLogger(CountingConfigs::class.java)
+    private val log = LoggerFactory.getLogger(MessageCountingConfigs::class.java)
 
     private val application: ApplicationData by lazy {
         ApplicationData(
